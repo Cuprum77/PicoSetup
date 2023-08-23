@@ -19,7 +19,7 @@ def CreateMain():
 #include <stdio.h>
 #include "pico/stdlib.h"
 
-#define LED_PIN 25
+#define LED_PIN PICO_DEFAULT_LED_PIN
 
 int main()
 {
@@ -155,8 +155,9 @@ product_id = "000A"
 # Import the required modules
 import os
 import sys
-import subprocess
 import shutil
+import subprocess
+import time
 
 
 # Fix the path so that the script can be run from any directory
@@ -179,7 +180,7 @@ def Scan_For_MassStorage(device_name):
     if os.name == "nt":  # Windows
         # get a list of all mounted volumes using the win32api module
         volumes = win32api.GetLogicalDriveStrings()
-        volumes = volumes.split('\\x00')[:-1]
+        volumes = volumes.split('\x00')[:-1]
 
         # loop over the mounted volumes and look for a volume with the correct label
         for volume in volumes:
@@ -200,6 +201,17 @@ def Scan_For_MassStorage(device_name):
                 return True
             
         return False
+    
+
+# Wait for the device to be mounted
+def Wait_For_MassStorage_Device():
+    print("Waiting for the device to be mounted...")
+    while(True):
+        # check if the device is mounted
+        if Scan_For_MassStorage(device_target):
+            break
+        else:
+            time.sleep(0.5)
 
 
 # Transfer the uf2 file to the mounted device
@@ -210,7 +222,7 @@ def Transfer_File():
         if os.name == "nt":  # Windows
             # get a list of all mounted volumes using the win32api module
             volumes = win32api.GetLogicalDriveStrings()
-            volumes = volumes.split('\\x00')[:-1]
+            volumes = volumes.split('\x00')[:-1]
 
             # loop over the mounted volumes and look for a volume with the correct label
             destination_found = False
@@ -254,6 +266,13 @@ if not os.path.exists(file_path):
 if Scan_For_MassStorage(device_target):
     # Transfer the uf2 file to the mounted device
     Transfer_File()
+else:
+    # Wait for the device to be mounted
+    subprocess.call(["picotool", "reboot", "-f", "-u"])
+    Wait_For_MassStorage_Device()
+    # Transfer the uf2 file to the mounted device
+    Transfer_File()
+
 """
 
     # Write to programmer.py
